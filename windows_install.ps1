@@ -176,6 +176,7 @@ $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 
 section "IDE Installation"
 Write-Host "Do you want to install PhpStorm and/or Visual Studio Code ? (y/n)" -ForegroundColor DarkYellow -NoNewline
+
 $confirm = Read-Host -Prompt " "
 if ($confirm -eq "o" -or $confirm -eq "O" -or $confirm -eq "Y" -or $confirm -eq "y")
 {
@@ -186,11 +187,11 @@ else
     Write-Host "No action has been performed." -ForegroundColor DarkYellow
 }
 
-
 section "Verification of Windows compatibility with WSL 2"
 # Verifier si le Windows Installer est compatible avec WSL 2
 $os_version = [Environment]::OSVersion.Version
 $is_x64 = [Environment]::Is64BitOperatingSystem
+
 if (($os_version -ge (New-Object System.Version("10.0.18362.0")) -and $os_version -lt (New-Object System.Version("11.0"))) -or ($os_version -ge (New-Object System.Version("10.0.19041.0")) -and $is_x64))
 {
     Write-Host "Windows is compatible with WSL 2." -ForegroundColor Green
@@ -561,93 +562,6 @@ else
 
 $ssh_key_content = wsl -d Ubuntu-22.04 -e sh -c "cat ~/.ssh/id_rsa.pub" 2>&1
 
-$bitbucket_access = wsl -d Ubuntu-22.04 -e sh -c "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -T git@bitbucket.com" 2>&1
-
-if ($LASTEXITCODE -eq 0)
-{
-    Write-Host "Bitbucket access is successful." -ForegroundColor Green
-}
-else
-{
-    section $ssh_key_content $false
-
-    Write-Host "Please copy the SSH key above and add it to your Bitbucket account." -ForegroundColor DarkYellow
-    Write-Host "https://bitbucket.org/account/settings/ssh-keys/" -ForegroundColor DarkYellow
-    Write-Host ""
-    Read-Host -Prompt "Press any key to continue..."
-
-    # Vérification de l'accès au repository Bitbucket
-    section "Checking Bitbucket access"
-    $bitbucket_access = wsl -d Ubuntu-22.04 -e sh -c "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -T git@bitbucket.com" 2>&1
-
-    Write-Host "Verification of the Bitbucket access..." -ForegroundColor DarkYellow
-    while ($LASTEXITCODE -ne 0)
-    {
-        Write-Host "Bitbucket access failed." -ForegroundColor Red
-        Write-Host "Please check that the SSH key has been added to your Bitbucket account." -ForegroundColor DarkYellow
-        Read-Host -Prompt "Press any key to retry..."
-        $bitbucket_access = wsl -d Ubuntu-22.04 -e sh -c "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -T git@bitbucket.com" 2>&1
-    }
-
-    Write-Host "Bitbucket access was successful." -ForegroundColor Green
-}
-
-$baseSetupDir = "wyz"
-section "Clone base projects directory"
-Write-Host ""
-Write-Host "----------------------------------------" -ForegroundColor DarkYellow
-Write-Host "If a prompt appears asking for yes or no, please enter yes." -ForegroundColor DarkYellow
-Write-Host "----------------------------------------" -ForegroundColor DarkYellow
-Write-Host ""
-wsl -d Ubuntu-22.04 -e sh -c "git clone git@bitbucket.org:wyzproject1/wyz-setup-projects.git ~/$baseSetupDir --recurse-submodules -j 8"
-Write-Host "Clone base projects directory was successful." -ForegroundColor Green
-
-Write-Host "Set 'develop' branch for wyzapi, superappro, api-pricing projects" -ForegroundColor DarkYellow
-wsl -d Ubuntu-22.04 -e sh -c "cd ~/$baseSetupDir/projects/wyzapi && git checkout develop"
-wsl -d Ubuntu-22.04 -e sh -c "cd ~/$baseSetupDir/projects/superappro && git checkout develop"
-wsl -d Ubuntu-22.04 -e sh -c "cd ~/$baseSetupDir/projects/api-pricing && git checkout develop"
-
-Write-Host "Set 'master' branch for strapi project" -ForegroundColor DarkYellow
-wsl -d Ubuntu-22.04 -e sh -c "cd ~/$baseSetupDir/third-party/strapi && git checkout master"
-
-$lastRelease = wsl -d Ubuntu-22.04 -e sh -c "cd ~/$baseSetupDir/projects/wyz-connect && git branch --sort=-committerdate --format '%(refname:short)' --list 'release/v*' | head -n 1"
-Write-Host "Set '$lastRelease' branch for wyz-connect project" -ForegroundColor DarkYellow
-$cmd = "cd ~/$baseSetupDir/projects/wyz-connect && git checkout $lastRelease"
-wsl -d Ubuntu-22.04 -e bash -c $cmd
-
-section "Additional repositories cloning"
-function cloneRepo($name, $repoUrl)
-{
-    Write-Host "Do you want to clone the repository $name ? (o/n)" -ForegroundColor DarkYellow -NoNewline
-    $response = Read-Host -Prompt " "
-    if ($response -eq "o" -or $response -eq "O" -or $response -eq "y" -or $response -eq "Y")
-    {
-        Write-Host "Cloning the repository $name..." -ForegroundColor DarkYellow
-        wsl -d Ubuntu-22.04 -e sh -c "cd ~/$baseSetupDir && git clone $repoUrl"
-        Write-Host "Cloning the repository $name was successful." -ForegroundColor Green
-    }
-    else
-    {
-        Write-Host "Cloning the repository $name was skipped." -ForegroundColor DarkYellow
-    }
-}
-
-# This repository list is for repositories that are not in the wyz-setup-projects repository as submodules
-$repositories = @{
-    "s2s" = "git clone git@bitbucket.org:wyzproject1/s2s.git"
-}
-
-Write-Host "Did you want to clone the repositories ? (o/n)" -ForegroundColor DarkYellow -NoNewline
-$response = Read-Host -Prompt " "
-if ($response -eq "Y" -or $response -eq "y" -or $response -eq "O" -or $response -eq "o")
-{
-    foreach ($repo in $repositories.GetEnumerator())
-    {
-        cloneRepo $repo.Key $repo.Value
-    }
-    Write-Host "Cloning repositories was successful." -ForegroundColor Green
-}
-
 Write-Host ""
 Write-Host ""
 
@@ -676,10 +590,6 @@ if ($response -eq "Y" -or $response -eq "y" -or $response -eq "O" -or $response 
     Write-Host "Installing Oh My Fish..." -ForegroundColor DarkYellow
     wsl -d Ubuntu-22.04 -e sh -c "curl -L https://github.com/oh-my-fish/oh-my-fish/raw/master/bin/install > install && chmod +x install && ./install --noninteractive && rm ./install" 2>&1
     Write-Host "Oh My Fish installation was successful." -ForegroundColor Green
-
-    Write-Host "Set default directory to ~/$baseSetupDir..." -ForegroundColor DarkYellow
-    wsl -d Ubuntu-22.04 -e sh -c "echo 'cd ~/$baseSetupDir' >> ~/.config/fish/config.fish"
-    Write-Host "Default directory is now ~/$baseSetupDir." -ForegroundColor Green
 
     Write-Host "Set FISH as default shell..." -ForegroundColor DarkYellow
     Write-Host "Please enter your Ubuntu password." -ForegroundColor DarkYellow
@@ -745,9 +655,6 @@ if ($response -eq "Y" -or $response -eq "y" -or $response -eq "O" -or $response 
 else
 {
     Write-Host "FISH installation was skipped." -ForegroundColor Green
-    Write-Host "Set default directory to ~/$baseSetupDir..." -ForegroundColor DarkYellow
-    wsl -d Ubuntu-22.04 -e sh -c "echo 'cd ~/$baseSetupDir' >> ~/.bashrc"
-    Write-Host "Default directory is now ~/$baseSetupDir." -ForegroundColor Green
 }
 
 $user = wsl -d Ubuntu-22.04 -e sh -c "whoami"

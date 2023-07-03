@@ -32,15 +32,8 @@ Notez que vous devez **impérativement** modifier l'ExecutionPolicy de **PowerSh
 
 ---
 
-Installation de la base de projet (installation de la base recommandé à la racine du disque dur [~/])
-
-```bash
-git clone git@bitbucket.org:wyzproject1/wyz-setup-projects.git wyz --recurse-submodules -j 8
-```
-
 Avoir `jq` d'installé sur votre machine (pour les scripts taskfile)
 
 ```bash
 sudo apt install jq
 ```
-
